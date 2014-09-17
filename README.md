@@ -3,7 +3,11 @@ pixelbox
 
 A sandbox for image processing ideas.
 
-`go run <file>.go`
+```
+go get -d github.com/aclissold/pixelbox
+cd $GOPATH/src/github.com/aclissold/pixelbox
+go run <file>.go
+```
 
 ![noise](https://raw.githubusercontent.com/aclissold/pixelbox/master/noise.png)
 
