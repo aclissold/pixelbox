@@ -7,13 +7,19 @@ import (
 	"image/png"
 	"log"
 	"os"
+	"runtime"
 	"strconv"
+	"sync"
 )
 
 var in image.Image
 var out *image.Gray
 var radius int
 var bounds image.Rectangle
+
+var wg sync.WaitGroup
+var lastUpdate int = 0
+var l sync.Mutex
 
 func main() {
 	setup()
@@ -23,6 +29,8 @@ func main() {
 
 // setup instantiates in, out, radius, and bounds.
 func setup() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	f, err := os.Open("noise.png")
 	if err != nil {
 		log.Fatal("you must run noise.go first")
@@ -50,20 +58,35 @@ func setup() {
 
 // draw computes the values for out.
 func draw() {
-	lastUpdate := ""
-	for y := 0; y < bounds.Max.Y; y++ {
-		for x := 0; x < bounds.Max.X; x++ {
+	wg.Add(4)
+	go drawquadrant(0, 0) // upper left
+	go drawquadrant(0, 1) // upper right
+	go drawquadrant(1, 0) // lower left
+	go drawquadrant(1, 1) // lower right
+	wg.Wait()
+	fmt.Println()
+}
+
+// drawquadrant computes the values for the (i, j) quadrant of out.
+func drawquadrant(j, i int) {
+	defer wg.Done()
+	lastPercent := -1
+	startY, endY := j*bounds.Max.Y/2, bounds.Max.Y/2+j*bounds.Max.Y/2
+	startX, endX := i*bounds.Max.X/2, bounds.Max.X/2+i*bounds.Max.X/2
+	for y := startY; y < endY; y++ {
+		for x := startX; x < endX; x++ {
 			gray := mean(in, x, y, radius)
 			out.Set(x, y, gray)
 		}
-		percent := 100 * (float32(y) / float32(bounds.Max.Y))
-		update := fmt.Sprintf("\r%.0f%%", percent)
-		if update != lastUpdate {
-			fmt.Print(update)
-			lastUpdate = update
+		percent := int(25 * (float32(y-startY) / float32(bounds.Max.Y/2)))
+		if percent != lastPercent {
+			lastPercent = percent
+			l.Lock()
+			lastUpdate++
+			l.Unlock()
+			fmt.Printf("\r%d%%", lastUpdate)
 		}
 	}
-	fmt.Println()
 }
 
 // write writes out to blur/blur<radius>.png.
