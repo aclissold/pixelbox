@@ -6,46 +6,57 @@ import (
 	"image/color"
 	"image/png"
 	"log"
-	"math/rand"
 	"os"
 	"strconv"
 )
 
-var size int
-var in *image.RGBA
-var r *rand.Rand
+var in image.Image
+var out *image.Gray
+var radius int
+var bounds image.Rectangle
 
 func main() {
+	setup()
+	draw()
+	write()
+}
+
+// setup instantiates in, out, radius, and bounds.
+func setup() {
 	f, err := os.Open("noise.png")
 	if err != nil {
 		log.Fatal("you must run noise.go first")
 	}
-	in, err := png.Decode(f)
+	in, err = png.Decode(f)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	b := in.Bounds()
+	bounds = in.Bounds()
 
-	out := image.NewGray(image.Rect(0, 0, b.Max.X, b.Max.Y))
-	usage := "Usage:\n\tgo run blur.go r\n\n" +
-		"Where r is on the interval [0, 1024).\n"
+	out = image.NewGray(image.Rect(0, 0, bounds.Max.X, bounds.Max.Y))
+	usage := "Usage:\n\tgo run blur.go radius\n\n" +
+		"Where radius is on the interval [0, 1024).\n"
 	if len(os.Args) != 2 {
 		fmt.Println(usage)
 		os.Exit(1)
 	}
-	r, err := strconv.Atoi(os.Args[1])
-	if err != nil || r < 0 || r > 1023 {
+	radius, err = strconv.Atoi(os.Args[1])
+	if err != nil || radius < 0 || radius > 1023 {
 		fmt.Println(usage)
 		os.Exit(1)
 	}
+}
+
+// draw computes the values for out.
+func draw() {
 	lastUpdate := ""
-	for y := 0; y < b.Max.Y; y++ {
-		for x := 0; x < b.Max.X; x++ {
-			gray := mean(in, x, y, r)
+	for y := 0; y < bounds.Max.Y; y++ {
+		for x := 0; x < bounds.Max.X; x++ {
+			gray := mean(in, x, y, radius)
 			out.Set(x, y, gray)
 		}
-		percent := 100 * (float32(y) / float32(b.Max.Y))
+		percent := 100 * (float32(y) / float32(bounds.Max.Y))
 		update := fmt.Sprintf("\r%.0f%%", percent)
 		if update != lastUpdate {
 			fmt.Print(update)
@@ -53,7 +64,10 @@ func main() {
 		}
 	}
 	fmt.Println()
+}
 
+// write writes out to blur/blur<radius>.png.
+func write() {
 	perm := os.ModeDir | 0755
 	if err := os.Mkdir("blur", perm); err != nil {
 		if !os.IsExist(err) {
@@ -61,18 +75,19 @@ func main() {
 		}
 	}
 
-	filename := fmt.Sprintf("blur/blur%d.png", r)
+	filename := fmt.Sprintf("blur/blur%d.png", radius)
 	file, err := os.Create(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = png.Encode(file, out)
-	if err != nil {
+	if err = png.Encode(file, out); err != nil {
 		log.Fatal(err)
 	}
 }
 
+// mean returns the mean value of the square centered at
+// (x, y) in i with radius r.
 func mean(i image.Image, x, y, r int) color.Gray16 {
 	min := image.Point{X: x - r, Y: y - r}
 	max := image.Point{X: x + r, Y: y + r}
