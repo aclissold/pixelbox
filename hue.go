@@ -13,8 +13,8 @@ func main() {
 	icon := image.NewRGBA(image.Rect(0, 0, size, size))
 	hue := &palette.HSVA{0, 1, 1, 1}
 
-	for x := 0; x < size; x++ {
-		for y := 0; y < size; y++ {
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
 			hue.H = float64(x) / float64(size)
 			icon.Set(x, y, hue)
 		}

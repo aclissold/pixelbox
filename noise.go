@@ -30,8 +30,8 @@ func setup() {
 }
 
 func draw() {
-	for x := 0; x < size; x++ {
-		for y := 0; y < size; y++ {
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
 			gray := color.Gray16{uint16(r.Intn(65536))}
 			img.Set(x, y, gray)
 		}
